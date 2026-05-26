@@ -1,0 +1,23 @@
+# Secrets
+.env
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars.json
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+
+# Lambda build artifacts
+*.zip
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
