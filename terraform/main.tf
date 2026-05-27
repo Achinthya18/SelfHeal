@@ -28,3 +28,20 @@ provider "aws" {
     }
   }
 }
+
+module "dynamodb" {
+  source = "./modules/dynamodb"
+
+  environment = var.environment
+  table_name  = "self-healing-incidents"
+}
+
+module "lambdas" {
+  source = "./modules/lambdas"
+
+  environment                   = var.environment
+  aws_region                    = var.aws_region
+  dynamodb_table_arn            = module.dynamodb.table_arn
+  ses_sender_email              = var.ses_sender_email
+  approval_token_expiry_minutes = var.approval_token_expiry_minutes
+}
