@@ -75,3 +75,18 @@ module "api_gateway" {
   approval_callback_lambda_arn  = module.lambdas.approval_callback_lambda_arn
   approval_callback_lambda_name = module.lambdas.approval_callback_lambda_name
 }
+
+module "cloudwatch" {
+  source = "./modules/cloudwatch"
+
+  environment = var.environment
+  aws_region  = var.aws_region
+}
+
+module "eventbridge" {
+  source = "./modules/eventbridge"
+
+  environment        = var.environment
+  aws_region         = var.aws_region
+  step_functions_arn = module.step_functions.state_machine_arn
+}
