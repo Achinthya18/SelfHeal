@@ -89,7 +89,7 @@ def _determine_final_status(event: dict) -> str:
     """Map the incoming event to a DynamoDB status string."""
     action = event.get("action", "")
     ssm_status = event.get("ssm_status", "")
-    error = event.get("error", "")
+    error = event.get("error") or event.get("error_info", {}).get("Error", "")
 
     if action == "rejected" or error == "HumanRejected":
         return "rejected"

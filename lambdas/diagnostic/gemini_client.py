@@ -79,7 +79,10 @@ def invoke_gemini(user_message: str, system_instruction: str, max_tokens: int = 
         "generationConfig": {
             "maxOutputTokens": max_tokens,
             "temperature": 0.2,          # low temperature = deterministic runbook selection
-            "responseMimeType": "application/json"
+            "responseMimeType": "application/json",
+            # Gemini 2.5 Flash uses thinking tokens by default; disabling here so all
+            # maxOutputTokens are available for the actual JSON content (not internal reasoning)
+            "thinkingConfig": {"thinkingBudget": 0}
         }
     }
 
