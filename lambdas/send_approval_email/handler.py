@@ -33,6 +33,7 @@ import json
 import logging
 import os
 import time
+import urllib.parse
 from pathlib import Path
 
 import boto3
@@ -77,12 +78,13 @@ def _generate_approval_token(incident_id: str, expiry_ts: int) -> str:
 def _build_approval_urls(incident_id: str, created_at: str, task_token: str, token: str) -> tuple[str, str]:
     """Return (approve_url, reject_url) for embedding in the email."""
     base = API_GATEWAY_BASE_URL.rstrip("/")
-    params = (
-        f"incident_id={incident_id}"
-        f"&created_at={created_at}"
-        f"&token={token}"
-        f"&task_token={task_token}"
-    )
+    # URL-encode every param — task_token is Base64 and contains +/= that break URLs
+    params = urllib.parse.urlencode({
+        "incident_id": incident_id,
+        "created_at":  created_at,
+        "token":       token,
+        "task_token":  task_token,
+    })
     return f"{base}/approve?{params}", f"{base}/reject?{params}"
 
 

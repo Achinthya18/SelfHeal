@@ -81,7 +81,8 @@ def handler(event: dict, context) -> dict:
     token = params.get("token", "")
     task_token = params.get("task_token", "")
 
-    # URL-decode the task_token (API Gateway may not decode it automatically)
+    # URL-decode params — API Gateway usually decodes these, but be explicit
+    created_at = urllib.parse.unquote(created_at)
     task_token = urllib.parse.unquote(task_token)
 
     # ── Determine action from the resource path ─────────────────────────────
