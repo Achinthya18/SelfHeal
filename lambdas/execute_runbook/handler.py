@@ -130,6 +130,7 @@ def _start_automation(document_name: str, parameters: dict) -> str:
     response = _ssm().start_automation_execution(
         DocumentName=document_name,
         Parameters=parameters,
+        AutomationAssumeRoleArn=SSM_AUTOMATION_ROLE_ARN,
         Tags=[
             {"Key": "Project", "Value": "self-healing-infra"},
             {"Key": "ManagedBy", "Value": "execute-runbook-lambda"},
