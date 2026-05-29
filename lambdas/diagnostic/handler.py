@@ -118,7 +118,7 @@ def handler(event: dict, context) -> dict:
     diagnosis_result = invoke_gemini(
         user_message=user_message,
         system_instruction=_SYSTEM_PROMPT,
-        max_tokens=512,
+        max_tokens=2048,
     )
 
     # ── Build the output payload ────────────────────────────────────────────

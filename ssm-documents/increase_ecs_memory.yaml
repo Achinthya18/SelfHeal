@@ -1,0 +1,127 @@
+schemaVersion: "0.3"
+description: >
+  Registers a new revision of the ECS task definition with an increased memory limit,
+  then updates the service to use the new revision and forces a new deployment.
+  Waits up to 10 minutes for the service to stabilize with the updated tasks running.
+parameters:
+  ClusterName:
+    type: String
+    description: Name of the ECS cluster.
+  ServiceName:
+    type: String
+    description: Name of the ECS service to update.
+  NewMemoryMb:
+    type: String
+    description: New memory limit in MiB (e.g. "2048"). Applied to all containers in the task definition.
+mainSteps:
+  - name: UpdateTaskDefinition
+    action: aws:executeScript
+    description: >
+      Read the current task definition, patch the memory on every container,
+      register a new revision, and update the service to use it.
+    timeoutSeconds: 120
+    inputs:
+      Runtime: python3.11
+      Handler: update_memory
+      InputPayload:
+        cluster_name: "{{ ClusterName }}"
+        service_name: "{{ ServiceName }}"
+        new_memory_mb: "{{ NewMemoryMb }}"
+      Script: |
+        import boto3
+
+        def update_memory(events, context):
+            ecs = boto3.client('ecs')
+            cluster = events['cluster_name']
+            service = events['service_name']
+            new_memory = int(events['new_memory_mb'])
+
+            # Get current task definition ARN from the service
+            svc_resp = ecs.describe_services(cluster=cluster, services=[service])
+            current_td_arn = svc_resp['services'][0]['taskDefinition']
+
+            td_resp = ecs.describe_task_definition(taskDefinition=current_td_arn)
+            td = td_resp['taskDefinition']
+
+            # Patch memory on every container definition
+            containers = td['containerDefinitions']
+            for container in containers:
+                container['memory'] = new_memory
+                # memoryReservation must not exceed hard memory limit
+                if container.get('memoryReservation', 0) > new_memory:
+                    container['memoryReservation'] = new_memory
+
+            # Build registration payload — only include fields the API accepts
+            register_params = {
+                'family': td['family'],
+                'containerDefinitions': containers,
+                'volumes': td.get('volumes', []),
+                'placementConstraints': td.get('placementConstraints', []),
+            }
+            if td.get('taskRoleArn'):
+                register_params['taskRoleArn'] = td['taskRoleArn']
+            if td.get('executionRoleArn'):
+                register_params['executionRoleArn'] = td['executionRoleArn']
+            if td.get('networkMode'):
+                register_params['networkMode'] = td['networkMode']
+            if td.get('requiresCompatibilities'):
+                register_params['requiresCompatibilities'] = td['requiresCompatibilities']
+            if td.get('cpu'):
+                register_params['cpu'] = td['cpu']
+            if td.get('memory'):
+                register_params['memory'] = str(new_memory)
+
+            new_td = ecs.register_task_definition(**register_params)
+            new_td_arn = new_td['taskDefinition']['taskDefinitionArn']
+
+            # Force a new deployment using the new task definition revision
+            ecs.update_service(
+                cluster=cluster,
+                service=service,
+                taskDefinition=new_td_arn,
+                forceNewDeployment=True
+            )
+
+            return {
+                'new_task_definition_arn': new_td_arn,
+                'new_memory_mb': new_memory,
+                'status': 'updated'
+            }
+    outputs:
+      - Name: NewTaskDefinitionArn
+        Selector: "$.Payload.new_task_definition_arn"
+        Type: String
+
+  - name: WaitForServiceStable
+    action: aws:executeScript
+    description: Poll until the service running count meets desired count with no pending tasks.
+    timeoutSeconds: 600
+    inputs:
+      Runtime: python3.11
+      Handler: wait_for_stable
+      InputPayload:
+        cluster_name: "{{ ClusterName }}"
+        service_name: "{{ ServiceName }}"
+      Script: |
+        import boto3
+        import time
+
+        def wait_for_stable(events, context):
+            ecs = boto3.client('ecs')
+            cluster = events['cluster_name']
+            service = events['service_name']
+
+            for _ in range(60):
+                resp = ecs.describe_services(cluster=cluster, services=[service])
+                svc = resp['services'][0]
+                if svc['runningCount'] >= svc['desiredCount'] and svc['pendingCount'] == 0:
+                    return {'status': 'stable', 'running_count': svc['runningCount']}
+                time.sleep(10)
+
+            raise Exception(
+                'Service {} did not stabilize within 600 seconds after memory increase'.format(service)
+            )
+    outputs:
+      - Name: FinalStatus
+        Selector: "$.Payload.status"
+        Type: String

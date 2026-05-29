@@ -31,3 +31,9 @@ variable "approval_token_expiry_minutes" {
   type        = number
   default     = 15
 }
+
+variable "approval_token_secret" {
+  description = "Secret key used to sign and verify approval tokens embedded in SES emails"
+  type        = string
+  sensitive   = true
+}

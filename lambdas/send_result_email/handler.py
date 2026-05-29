@@ -110,9 +110,11 @@ def handler(event: dict, context) -> dict:
     recommended_runbook = event.get("recommended_runbook", "")
     diagnosis = event.get("diagnosis", "")
     ssm_execution_id = event.get("ssm_execution_id", "")
-    action = event.get("action", "approved")
-    error = event.get("error", "")
-    cause = event.get("cause", "")
+    action = event.get("action") or event.get("approval_callback", {}).get("action", "approved")
+    # Step Functions Catch blocks inject error details under "error_info"; also accept top-level keys
+    _error_info = event.get("error_info", {})
+    error = event.get("error") or _error_info.get("Error", "")
+    cause = event.get("cause") or _error_info.get("Cause", "")
     now = datetime.now(timezone.utc).isoformat()
 
     final_status = _determine_final_status(event)

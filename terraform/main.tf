@@ -43,5 +43,35 @@ module "lambdas" {
   aws_region                    = var.aws_region
   dynamodb_table_arn            = module.dynamodb.table_arn
   ses_sender_email              = var.ses_sender_email
+  ses_recipient_email           = var.ses_recipient_email
+  gemini_model_id               = var.gemini_model_id
+  approval_token_secret         = var.approval_token_secret
   approval_token_expiry_minutes = var.approval_token_expiry_minutes
+  api_gateway_base_url          = "https://r0hzp2rsva.execute-api.ap-south-1.amazonaws.com/v1"
+}
+
+module "ssm_documents" {
+  source = "./modules/ssm_documents"
+
+  environment = var.environment
+}
+
+module "step_functions" {
+  source = "./modules/step_functions"
+
+  environment                    = var.environment
+  aws_region                     = var.aws_region
+  diagnostic_lambda_arn          = module.lambdas.diagnostic_lambda_arn
+  send_approval_email_lambda_arn = module.lambdas.send_approval_email_lambda_arn
+  execute_runbook_lambda_arn     = module.lambdas.execute_runbook_lambda_arn
+  send_result_email_lambda_arn   = module.lambdas.send_result_email_lambda_arn
+}
+
+module "api_gateway" {
+  source = "./modules/api_gateway"
+
+  environment                   = var.environment
+  aws_region                    = var.aws_region
+  approval_callback_lambda_arn  = module.lambdas.approval_callback_lambda_arn
+  approval_callback_lambda_name = module.lambdas.approval_callback_lambda_name
 }
