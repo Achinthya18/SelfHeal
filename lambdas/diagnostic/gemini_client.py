@@ -84,7 +84,18 @@ def invoke_gemini(user_message: str, system_instruction: str, max_tokens: int = 
     }
 
     logger.info("Sending request to Gemini model: %s", GEMINI_MODEL_ID)
-    response = requests.post(url, json=payload, timeout=30)
+
+    # Retry up to 3 times on 429/503 (rate limit / overload)
+    import time as _time
+    for attempt in range(3):
+        response = requests.post(url, json=payload, timeout=30)
+        if response.status_code in (429, 503) and attempt < 2:
+            wait = 5 * (attempt + 1)
+            logger.warning("Gemini returned %s (attempt %d/3); retrying in %ds",
+                           response.status_code, attempt + 1, wait)
+            _time.sleep(wait)
+            continue
+        break
 
     if response.status_code != 200:
         raise ValueError(
