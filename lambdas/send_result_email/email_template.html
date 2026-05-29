@@ -3,117 +3,168 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Self-Healing Infrastructure — Result</title>
+  <title>Infrastructure Incident — Result</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f4f6f8;
-      margin: 0;
-      padding: 20px;
-      color: #2c3e50;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #e8eaed;
+      padding: 32px 16px;
+      color: #1a1a2e;
+      -webkit-font-smoothing: antialiased;
     }
-    .container {
-      max-width: 640px;
-      margin: 0 auto;
+    .wrapper { max-width: 600px; margin: 0 auto; }
+
+    .accent { height: 4px; background: {{outcome_color}}; border-radius: 4px 4px 0 0; }
+    .card {
       background: #ffffff;
-      border-radius: 8px;
+      border-radius: 0 0 10px 10px;
       overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.10);
     }
-    .header {
-      background: {{outcome_color}};
-      color: #ffffff;
-      padding: 24px 32px;
-    }
-    .header h1 { margin: 0; font-size: 22px; font-weight: 700; }
-    .header .env-badge {
+
+    /* ── Header ─────────────────────────────────────── */
+    .header { background: {{outcome_color}}; padding: 28px 36px 24px; }
+    .badge-row { margin-bottom: 14px; }
+    .badge {
       display: inline-block;
-      margin-top: 6px;
-      padding: 2px 10px;
-      background: rgba(255,255,255,0.25);
-      border-radius: 12px;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
-      letter-spacing: 0.5px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.22);
+      color: #fff;
+      margin-right: 6px;
     }
-    .body { padding: 28px 32px; }
-    .section-title {
-      font-size: 12px;
+    .header h1 { color: #ffffff; font-size: 22px; font-weight: 700; line-height: 1.3; }
+    .header-sub { color: rgba(255,255,255,0.75); font-size: 13px; margin-top: 8px; font-family: 'SFMono-Regular', Consolas, monospace; }
+
+    /* ── Body ───────────────────────────────────────── */
+    .body { padding: 28px 36px; }
+
+    .label {
+      font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #7f8c8d;
-      margin: 20px 0 6px 0;
+      letter-spacing: 1.2px;
+      color: #94a3b8;
+      margin-bottom: 7px;
     }
-    .outcome-box {
-      background: #f8f9fa;
-      border-left: 4px solid {{outcome_color}};
-      padding: 14px 16px;
+    .divider { height: 1px; background: #f1f3f5; margin: 22px 0; }
+
+    /* Outcome box */
+    .outcome-card {
+      background: #f8fafc;
+      border-left: 3px solid {{outcome_color}};
       border-radius: 0 6px 6px 0;
+      padding: 14px 16px;
       font-size: 14px;
       line-height: 1.7;
-      color: #2c3e50;
+      color: #1e293b;
     }
-    .alarm-name { font-size: 15px; color: #7f8c8d; }
-    .resource-arn {
-      font-family: 'Courier New', Courier, monospace;
+
+    /* Resource pill */
+    .resource-pill {
+      background: #f7f8fa;
+      border: 1px solid #e2e6ea;
+      border-radius: 6px;
+      padding: 9px 13px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
       font-size: 12px;
-      background: #f8f9fa;
-      padding: 6px 10px;
-      border-radius: 4px;
-      border-left: 3px solid #bdc3c7;
-      color: #555;
+      color: #4a5568;
       word-break: break-all;
+      line-height: 1.5;
     }
-    .diagnosis-text {
-      font-size: 14px;
-      line-height: 1.6;
-      color: #555;
-    }
-    .meta-row {
-      display: flex;
-      gap: 24px;
+
+    /* Diagnosis */
+    .diagnosis-text { font-size: 14px; line-height: 1.7; color: #4a5568; }
+
+    /* Meta row */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
       margin-top: 8px;
-      font-size: 12px;
-      color: #7f8c8d;
     }
+    .meta-cell {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px 14px;
+    }
+    .meta-cell .meta-label { font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
+    .meta-cell .meta-value { font-size: 12px; color: #1e293b; font-weight: 600; word-break: break-all; }
+
+    /* ── Footer ─────────────────────────────────────── */
     .footer {
-      background: #f4f6f8;
-      padding: 16px 32px;
-      font-size: 11px;
-      color: #aaa;
+      padding: 16px 36px;
       text-align: center;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
     }
+    .footer p { font-size: 11px; color: #94a3b8; line-height: 1.8; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="env-badge">{{environment}}</div>
-      <h1>{{outcome_icon}} {{outcome_title}}</h1>
-    </div>
+  <div class="wrapper">
+    <div class="accent"></div>
+    <div class="card">
 
-    <div class="body">
-      <div class="section-title">Outcome</div>
-      <div class="outcome-box">{{outcome_detail}}</div>
-
-      <div class="section-title">Alarm</div>
-      <div class="alarm-name">{{alarm_name}}</div>
-
-      <div class="section-title">Affected Resource</div>
-      <div class="resource-arn">{{resource_arn}}</div>
-
-      <div class="section-title">Original Diagnosis</div>
-      <div class="diagnosis-text">{{diagnosis}}</div>
-
-      <div class="meta-row">
-        <span>Incident ID: <strong>{{incident_id}}</strong></span>
-        <span>Resolved at: <strong>{{timestamp}}</strong></span>
+      <!-- Header -->
+      <div class="header">
+        <div class="badge-row">
+          <span class="badge">{{environment}}</span>
+          <span class="badge">Incident Closed</span>
+        </div>
+        <h1>{{outcome_icon}} {{outcome_title}}</h1>
+        <div class="header-sub">{{alarm_name}}</div>
       </div>
-    </div>
 
-    <div class="footer">
-      Self-Healing Infrastructure · Powered by Gemini 2.5 Flash + AWS Step Functions
+      <!-- Body -->
+      <div class="body">
+
+        <div>
+          <div class="label">Outcome</div>
+          <div class="outcome-card">{{outcome_detail}}</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div>
+          <div class="label">Affected Resource</div>
+          <div class="resource-pill">{{resource_arn}}</div>
+        </div>
+
+        <div style="margin-top:18px;">
+          <div class="label">Original Diagnosis</div>
+          <div class="diagnosis-text">{{diagnosis}}</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div>
+          <div class="label">Incident Details</div>
+          <div class="meta-grid">
+            <div class="meta-cell">
+              <div class="meta-label">Incident ID</div>
+              <div class="meta-value">{{incident_id}}</div>
+            </div>
+            <div class="meta-cell">
+              <div class="meta-label">Closed At</div>
+              <div class="meta-value">{{timestamp}}</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p>Self-Healing Infrastructure</p>
+      </div>
+
     </div>
   </div>
 </body>
