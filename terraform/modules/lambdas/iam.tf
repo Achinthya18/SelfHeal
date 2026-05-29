@@ -128,6 +128,136 @@ resource "aws_iam_role_policy" "approval_callback_lambda_custom" {
   })
 }
 
+# ── ExecuteRunbookLambda ────────────────────────────────────────────────────
+resource "aws_iam_role" "execute_runbook_lambda" {
+  name               = "execute-runbook-lambda-role-${var.environment}"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
+}
+
+resource "aws_iam_role_policy_attachment" "execute_runbook_lambda_basic" {
+  role       = aws_iam_role.execute_runbook_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "execute_runbook_lambda_custom" {
+  name = "execute-runbook-lambda-policy-${var.environment}"
+  role = aws_iam_role.execute_runbook_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "StartAndQuerySSM"
+        Effect = "Allow"
+        Action = [
+          "ssm:StartAutomationExecution",
+          "ssm:GetAutomationExecution",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "PassSSMAutomationRole"
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
+        Resource = aws_iam_role.ssm_automation_execution.arn
+      },
+      {
+        Sid      = "UpdateIncidentRecord"
+        Effect   = "Allow"
+        Action   = ["dynamodb:UpdateItem"]
+        Resource = var.dynamodb_table_arn
+      }
+    ]
+  })
+}
+
+# ── SSM Automation Execution Role ────────────────────────────────────────────
+# This role is assumed by the SSM Automation service when executing runbook steps.
+resource "aws_iam_role" "ssm_automation_execution" {
+  name = "self-healing-ssm-automation-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ssm.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ssm_automation_execution" {
+  name = "self-healing-ssm-automation-policy-${var.environment}"
+  role = aws_iam_role.ssm_automation_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ECSRunbooks"
+        Effect = "Allow"
+        Action = [
+          "ecs:ListTasks",
+          "ecs:StopTask",
+          "ecs:DescribeServices",
+          "ecs:DescribeTaskDefinition",
+          "ecs:RegisterTaskDefinition",
+          "ecs:UpdateService",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "EC2Runbooks"
+        Effect = "Allow"
+        Action = [
+          "ec2:StopInstances",
+          "ec2:StartInstances",
+          "ec2:DescribeInstances",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ASGRunbooks"
+        Effect = "Allow"
+        Action = [
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:SetDesiredCapacity",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "RDSRunbooks"
+        Effect = "Allow"
+        Action = [
+          "rds:ModifyDBInstance",
+          "rds:DescribeDBInstances",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "SecretsManagerRunbooks"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid      = "IAMPassRoleForECS"
+        Effect   = "Allow"
+        Action   = ["iam:PassRole"]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "ecs-tasks.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
 # ── SendResultEmailLambda ───────────────────────────────────────────────────
 resource "aws_iam_role" "send_result_email_lambda" {
   name               = "send-result-email-lambda-role-${var.environment}"

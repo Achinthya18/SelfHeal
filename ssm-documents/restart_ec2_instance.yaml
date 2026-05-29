@@ -1,0 +1,53 @@
+schemaVersion: "0.3"
+description: >
+  Stops and then starts the specified EC2 instance.
+  A stop+start (not reboot) moves the instance to a new physical host,
+  clearing transient hardware issues that a reboot would not resolve.
+parameters:
+  InstanceId:
+    type: String
+    description: The EC2 instance ID to restart (e.g. i-0abc123def456789).
+mainSteps:
+  - name: StopInstance
+    action: aws:executeAwsApi
+    description: Issue a stop request to the EC2 instance.
+    inputs:
+      Service: ec2
+      Api: StopInstances
+      InstanceIds:
+        - "{{ InstanceId }}"
+
+  - name: WaitForStopped
+    action: aws:waitForAwsResourceProperty
+    description: Block until the instance reaches the stopped state.
+    timeoutSeconds: 300
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      InstanceIds:
+        - "{{ InstanceId }}"
+      PropertySelector: "$.Reservations[0].Instances[0].State.Name"
+      DesiredValues:
+        - stopped
+
+  - name: StartInstance
+    action: aws:executeAwsApi
+    description: Issue a start request to the (now stopped) EC2 instance.
+    inputs:
+      Service: ec2
+      Api: StartInstances
+      InstanceIds:
+        - "{{ InstanceId }}"
+
+  - name: WaitForRunning
+    action: aws:waitForAwsResourceProperty
+    description: Block until the instance is back in the running state.
+    timeoutSeconds: 300
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      InstanceIds:
+        - "{{ InstanceId }}"
+      PropertySelector: "$.Reservations[0].Instances[0].State.Name"
+      DesiredValues:
+        - running

@@ -1,0 +1,86 @@
+schemaVersion: "0.3"
+description: >
+  Increases the desired capacity of the specified Auto Scaling Group by 1.
+  Respects the group's MaxSize — will not exceed it.
+  Waits up to 5 minutes for a new instance to reach InService state.
+parameters:
+  AutoScalingGroupName:
+    type: String
+    description: The name of the Auto Scaling Group to scale out.
+mainSteps:
+  - name: ScaleOutASG
+    action: aws:executeScript
+    description: Read current desired capacity, increment by 1, and apply the change.
+    timeoutSeconds: 60
+    inputs:
+      Runtime: python3.11
+      Handler: scale_out
+      InputPayload:
+        asg_name: "{{ AutoScalingGroupName }}"
+      Script: |
+        import boto3
+
+        def scale_out(events, context):
+            client = boto3.client('autoscaling')
+            asg_name = events['asg_name']
+
+            resp = client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+            group = resp['AutoScalingGroups'][0]
+            current_desired = group['DesiredCapacity']
+            max_size = group['MaxSize']
+            new_desired = min(current_desired + 1, max_size)
+
+            client.set_desired_capacity(
+                AutoScalingGroupName=asg_name,
+                DesiredCapacity=new_desired,
+                HonorCooldown=False
+            )
+            return {
+                'previous_desired': current_desired,
+                'new_desired': new_desired,
+                'max_size': max_size
+            }
+    outputs:
+      - Name: NewDesiredCapacity
+        Selector: "$.Payload.new_desired"
+        Type: String
+
+  - name: WaitForNewInstance
+    action: aws:executeScript
+    description: Poll the ASG until the InService instance count reaches the new desired capacity.
+    timeoutSeconds: 300
+    inputs:
+      Runtime: python3.11
+      Handler: wait_for_inservice
+      InputPayload:
+        asg_name: "{{ AutoScalingGroupName }}"
+        target_capacity: "{{ ScaleOutASG.NewDesiredCapacity }}"
+      Script: |
+        import boto3
+        import time
+
+        def wait_for_inservice(events, context):
+            client = boto3.client('autoscaling')
+            asg_name = events['asg_name']
+            target = int(events['target_capacity'])
+
+            for _ in range(30):
+                resp = client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+                group = resp['AutoScalingGroups'][0]
+                in_service = sum(
+                    1 for inst in group['Instances']
+                    if inst['LifecycleState'] == 'InService'
+                )
+                if in_service >= target:
+                    return {'in_service_count': in_service, 'status': 'scaled_out'}
+                time.sleep(10)
+
+            raise Exception(
+                'ASG {} did not reach {} InService instances within 300 seconds'.format(
+                    asg_name, target
+                )
+            )
+    outputs:
+      - Name: InServiceCount
+        Selector: "$.Payload.in_service_count"
+        Type: String

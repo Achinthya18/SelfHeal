@@ -16,7 +16,21 @@ override.tf.json
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 .pytest_cache/
+
+# Pip-installed Lambda dependencies (written into source dirs by Terraform null_resource)
+lambdas/**/certifi/
+lambdas/**/certifi-*.dist-info/
+lambdas/**/charset_normalizer/
+lambdas/**/charset_normalizer-*.dist-info/
+lambdas/**/idna/
+lambdas/**/idna-*.dist-info/
+lambdas/**/requests/
+lambdas/**/requests-*.dist-info/
+lambdas/**/urllib3/
+lambdas/**/urllib3-*.dist-info/
+lambdas/**/bin/
 
 # OS
 .DS_Store

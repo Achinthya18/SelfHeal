@@ -18,8 +18,31 @@ variable "ses_sender_email" {
   type        = string
 }
 
+variable "ses_recipient_email" {
+  description = "Email address that receives approval and result emails"
+  type        = string
+}
+
+variable "gemini_model_id" {
+  description = "Gemini model ID used by DiagnosticLambda"
+  type        = string
+  default     = "gemini-2.5-flash"
+}
+
+variable "approval_token_secret" {
+  description = "Secret used to sign and verify approval tokens in SES emails"
+  type        = string
+  sensitive   = true
+}
+
 variable "approval_token_expiry_minutes" {
-  description = "Minutes before approval token expires"
+  description = "Minutes before an approval link expires"
   type        = number
   default     = 15
+}
+
+variable "api_gateway_base_url" {
+  description = "Base URL of the API Gateway (populated in Phase 6; use empty string until then)"
+  type        = string
+  default     = ""
 }

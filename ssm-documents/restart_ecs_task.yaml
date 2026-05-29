@@ -1,0 +1,82 @@
+schemaVersion: "0.3"
+description: >
+  Stops the first running task in the specified ECS service.
+  The ECS scheduler automatically starts a replacement task.
+  Waits up to 5 minutes for the service running count to meet desired count.
+parameters:
+  ClusterName:
+    type: String
+    description: Name of the ECS cluster.
+  ServiceName:
+    type: String
+    description: Name of the ECS service whose unhealthy task should be restarted.
+mainSteps:
+  - name: StopUnhealthyTask
+    action: aws:executeScript
+    description: List running tasks for the service and stop the first one found.
+    timeoutSeconds: 60
+    inputs:
+      Runtime: python3.11
+      Handler: stop_task
+      InputPayload:
+        cluster_name: "{{ ClusterName }}"
+        service_name: "{{ ServiceName }}"
+      Script: |
+        import boto3
+
+        def stop_task(events, context):
+            ecs = boto3.client('ecs')
+            cluster = events['cluster_name']
+            service = events['service_name']
+
+            response = ecs.list_tasks(cluster=cluster, serviceName=service)
+            task_arns = response.get('taskArns', [])
+
+            if not task_arns:
+                return {'stopped_task_arn': 'none', 'tasks_found': 0}
+
+            task_arn = task_arns[0]
+            ecs.stop_task(
+                cluster=cluster,
+                task=task_arn,
+                reason='Stopped by Self-Healing Runbook: restart_ecs_task'
+            )
+            return {'stopped_task_arn': task_arn, 'tasks_found': len(task_arns)}
+    outputs:
+      - Name: StoppedTaskArn
+        Selector: "$.Payload.stopped_task_arn"
+        Type: String
+
+  - name: WaitForReplacementTask
+    action: aws:executeScript
+    description: Poll until the service running count meets or exceeds the desired count.
+    timeoutSeconds: 300
+    inputs:
+      Runtime: python3.11
+      Handler: wait_for_running
+      InputPayload:
+        cluster_name: "{{ ClusterName }}"
+        service_name: "{{ ServiceName }}"
+      Script: |
+        import boto3
+        import time
+
+        def wait_for_running(events, context):
+            ecs = boto3.client('ecs')
+            cluster = events['cluster_name']
+            service = events['service_name']
+
+            for _ in range(30):
+                resp = ecs.describe_services(cluster=cluster, services=[service])
+                svc = resp['services'][0]
+                if svc['runningCount'] >= svc['desiredCount'] and svc['pendingCount'] == 0:
+                    return {'status': 'stable', 'running_count': svc['runningCount']}
+                time.sleep(10)
+
+            raise Exception(
+                'Service {} did not stabilize within 300 seconds'.format(service)
+            )
+    outputs:
+      - Name: ServiceStatus
+        Selector: "$.Payload.status"
+        Type: String

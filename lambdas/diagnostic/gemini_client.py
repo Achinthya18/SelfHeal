@@ -99,8 +99,16 @@ def invoke_gemini(user_message: str, system_instruction: str, max_tokens: int = 
 
     logger.info("Gemini raw response text: %s", raw_text[:500])
 
+    # Strip markdown code fences if Gemini wrapped the JSON (e.g. ```json ... ```)
+    text_to_parse = raw_text.strip()
+    if text_to_parse.startswith("```"):
+        lines = text_to_parse.split("\n")
+        text_to_parse = "\n".join(lines[1:])          # drop opening ```json line
+        if text_to_parse.rstrip().endswith("```"):
+            text_to_parse = text_to_parse.rstrip()[:-3].rstrip()
+
     try:
-        result = json.loads(raw_text)
+        result = json.loads(text_to_parse)
     except json.JSONDecodeError as exc:
         raise ValueError(
             f"Gemini response is not valid JSON: {raw_text[:500]}"
