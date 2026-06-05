@@ -156,9 +156,9 @@ resource "aws_iam_role_policy" "execute_runbook_lambda_custom" {
         Resource = "*"
       },
       {
-        Sid    = "PassSSMAutomationRole"
-        Effect = "Allow"
-        Action = ["iam:PassRole"]
+        Sid      = "PassSSMAutomationRole"
+        Effect   = "Allow"
+        Action   = ["iam:PassRole"]
         Resource = aws_iam_role.ssm_automation_execution.arn
       },
       {

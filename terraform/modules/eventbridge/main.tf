@@ -32,7 +32,7 @@ resource "aws_cloudwatch_event_rule" "alarm_to_alarm" {
   description = "Routes CloudWatch ALARM state changes (self-healing-* alarms) to Step Functions"
 
   event_pattern = jsonencode({
-    source      = ["aws.cloudwatch"]
+    source        = ["aws.cloudwatch"]
     "detail-type" = ["CloudWatch Alarm State Change"]
     detail = {
       state = {

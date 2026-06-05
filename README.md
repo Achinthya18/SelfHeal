@@ -8,43 +8,30 @@ Automatically detects AWS infrastructure failures, uses **Gemini 2.5 Flash** to 
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    Alarm["CloudWatch Alarm<br/>enters ALARM state"] --> EB[EventBridge Rule<br/>self-healing-* alarms]
+    EB --> Diag[RunDiagnostic Lambda<br/>fetch logs + call Gemini 2.5 Flash]
+    Diag --> SendEmail[SendApprovalEmail Lambda<br/>HMAC-signed link + SES]
+    SendEmail --> Wait{{"⏸ WaitForTaskToken<br/>up to 24h pause"}}
+
+    Wait -.->|"email arrives,<br/>human clicks link"| APIGW[API Gateway<br/>/approve or /reject]
+    APIGW --> Callback[ApprovalCallback Lambda<br/>verify token + resume]
+    Callback -->|"SendTaskSuccess (approve)<br/>SendTaskFailure (reject)"| Wait
+
+    Wait -->|approved| Exec[ExecuteRunbook Lambda<br/>start + poll SSM Automation]
+    Exec --> SSM[(SSM Automation Doc<br/>e.g. restart_ecs_task)]
+    SSM --> Result[SendResultEmail Lambda<br/>outcome email]
+
+    Wait -.->|rejected / error| Result
+
+    SendEmail --> DDB[(DynamoDB<br/>incident audit · 90d TTL)]
+    Result --> DDB
+    SendEmail --> SES[Amazon SES]
+    Result --> SES
 ```
-CloudWatch Alarm (ALARM state)
-        │
-        ▼
-EventBridge Rule
-  (self-healing-* alarms)
-        │
-        ▼
-Step Functions Workflow
-  ┌─────────────────────────────────────────┐
-  │  1. RunDiagnostic                        │
-  │     - Fetch last 100 CloudWatch logs     │
-  │     - Call Gemini 2.5 Flash              │
-  │     - Returns diagnosis + runbook choice │
-  │                                          │
-  │  2. SendApprovalEmail ⏸ WAITS           │
-  │     - Format HTML email with diagnosis   │
-  │     - Embed approve/reject links (HMAC)  │
-  │     - Send via Amazon SES                │
-  │     - Pause up to 24 hours               │
-  │                                          │
-  │  3. ExecuteRunbook  (after Approve)      │
-  │     - Start SSM Automation document      │
-  │     - Poll until terminal state          │
-  │                                          │
-  │  4. SendResultEmail                      │
-  │     - Email outcome + SSM execution ID   │
-  │     - Update DynamoDB record             │
-  └─────────────────────────────────────────┘
-        │                    │
-        ▼                    ▼
-   DynamoDB              Amazon SES
- (incident audit)    (approval + result emails)
-        
-Human clicks link → API Gateway → ApprovalCallbackLambda
-                                  → StepFunctions:SendTaskSuccess/Failure
-```
+
+The entire workflow lives inside one Step Functions state machine. The HITL pause (`WaitForTaskToken`) is the design feature that keeps the system safe to put in front of real infrastructure.
 
 ---
 
@@ -259,6 +246,73 @@ aws lambda invoke \
 
 ---
 
+## Troubleshooting & Gotchas
+
+Real bugs that bit this project during development. If you hit one of these, you're not the first.
+
+### `InvalidAutomationExecutionParametersException: Undefined execution inputs: [AutomationAssumeRole]`
+
+The SSM Automation document doesn't declare `AutomationAssumeRole` as a parameter. **Fix:** every YAML in `ssm-documents/` must include both an `assumeRole:` field at the top level AND an `AutomationAssumeRole` String parameter in the `parameters:` block:
+
+```yaml
+schemaVersion: "0.3"
+description: ...
+assumeRole: "{{ AutomationAssumeRole }}"
+parameters:
+  AutomationAssumeRole:
+    type: String
+    description: IAM role ARN that SSM Automation assumes while executing this runbook.
+  ClusterName:
+    type: String
+  ...
+```
+
+The Lambda then passes it inside `Parameters`:
+```python
+Parameters = {
+    **runbook_params,
+    "AutomationAssumeRole": [SSM_AUTOMATION_ROLE_ARN],
+}
+```
+
+> Older code passed `AutomationAssumeRoleArn=...` as a top-level kwarg. **Don't do this** — your Lambda's botocore version may not recognise it, and you'll get `ParamValidationError: Unknown parameter`.
+
+### `ParamValidationError: Unknown parameter in input: "Tags"` / `AccessDenied: ssm:AddTagsToResource`
+
+The Lambda role doesn't have `ssm:AddTagsToResource`. **Fix:** either drop the `Tags=[...]` kwarg from `start_automation_execution()` (it's purely cosmetic) or add the permission to the Lambda's IAM policy. This repo opts to drop the tags — they were never load-bearing.
+
+### `InvalidParameterException: ECS is not authorized to perform: sts:AssumeRole on AWSServiceRoleForECS`
+
+The ECS service-linked role doesn't exist in the account yet. AWS normally creates it lazily on first ECS use, but in fresh accounts the very first `CreateService` call fails. **Fix:** just retry `terraform apply` — by the time you re-run, the role has been auto-created and the service will create successfully.
+
+### "Fix Failed" with `ClusterNotFoundException` on the manual-test alarm
+
+The `self-healing-manual-test` alarm has no ECS metric dimensions, so the EventBridge transformer produces an empty cluster/service in the `resource_arn`. The pipeline runs all the way through and SSM rejects the call because the cluster doesn't exist.
+
+**This is expected** — the manual-test alarm only verifies the diagnose → email → approve → SSM-call path. To see a full green run, point an alarm at a real ECS service whose metric dimensions include `ClusterName` and `ServiceName`. The transformer extracts those and builds a real service ARN.
+
+### Gemini API key shows `PLACEHOLDER_REPLACE_WITH_REAL_KEY`
+
+The Terraform module creates the Secrets Manager secret with a placeholder. After your first `terraform apply` you **must** update it manually before the system works:
+
+```bash
+aws secretsmanager update-secret \
+  --secret-id "self-healing/gemini-api-key" \
+  --secret-string "YOUR_REAL_KEY" \
+  --region ap-south-1
+```
+
+This is intentional — the real key never lives in Terraform state. The Lambda fetches and caches it at cold-start.
+
+### Approval email never arrives
+
+Three likely causes:
+1. **SES sandbox** — by default SES can only send to verified addresses. Both the sender AND the recipient must be verified individually until you request production access.
+2. **Wrong region** — SES identity is per-region. Verifying in `us-east-1` won't help if your stack is in `ap-south-1`.
+3. **Step Functions failed before the email step** — check the execution in the Step Functions console; if `RunDiagnostic` failed (e.g. Gemini key invalid), no email is sent.
+
+---
+
 ## Repository Structure
 
 ```
@@ -283,8 +337,7 @@ aws lambda invoke \
 │   └── environments/dev/    # terraform.tfvars
 └── tests/
     ├── test_diagnostic_lambda.py
-    ├── test_approval_callback.py
-    └── test_runbook_selection.py
+    └── test_approval_callback.py
 ```
 
 ---
@@ -301,6 +354,6 @@ All secrets are stored in AWS Secrets Manager or passed as Lambda environment va
 | `SES_RECIPIENT_EMAIL` | send_approval_email, send_result_email | Who receives the emails |
 | `API_GATEWAY_BASE_URL` | send_approval_email | Base URL for approve/reject links |
 | `APPROVAL_TOKEN_SECRET` | send_approval_email, approval_callback | HMAC secret for link signing |
-| `APPROVAL_TOKEN_EXPIRY_MINUTES` | send_approval_email, approval_callback | Link lifetime (default: 15) |
+| `APPROVAL_TOKEN_EXPIRY_MINUTES` | send_approval_email | Link lifetime (default: 15) |
 | `SSM_AUTOMATION_ROLE_ARN` | execute_runbook | IAM role passed to SSM for runbook execution |
 | `DYNAMO_TABLE_NAME` | all | DynamoDB incidents table name |

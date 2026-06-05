@@ -60,10 +60,10 @@ resource "aws_lambda_function" "diagnostic" {
 
   environment {
     variables = {
-      GEMINI_SECRET_ARN  = aws_secretsmanager_secret.gemini_api_key.arn
-      GEMINI_MODEL_ID    = var.gemini_model_id
-      LOG_LEVEL          = "INFO"
-      ENVIRONMENT        = var.environment
+      GEMINI_SECRET_ARN = aws_secretsmanager_secret.gemini_api_key.arn
+      GEMINI_MODEL_ID   = var.gemini_model_id
+      LOG_LEVEL         = "INFO"
+      ENVIRONMENT       = var.environment
     }
   }
 }
@@ -119,7 +119,7 @@ resource "aws_lambda_function" "execute_runbook" {
   role             = aws_iam_role.execute_runbook_lambda.arn
   handler          = "handler.handler"
   runtime          = local.lambda_runtime
-  timeout          = 840   # 14 min — SSM runbooks can take up to 12 min
+  timeout          = 840 # 14 min — SSM runbooks can take up to 12 min
   memory_size      = 128
 
   environment {
@@ -144,11 +144,11 @@ resource "aws_lambda_function" "send_result_email" {
 
   environment {
     variables = {
-      SES_SENDER_EMAIL  = var.ses_sender_email
+      SES_SENDER_EMAIL    = var.ses_sender_email
       SES_RECIPIENT_EMAIL = var.ses_recipient_email
-      DYNAMO_TABLE_NAME = "self-healing-incidents"
-      LOG_LEVEL         = "INFO"
-      ENVIRONMENT       = var.environment
+      DYNAMO_TABLE_NAME   = "self-healing-incidents"
+      LOG_LEVEL           = "INFO"
+      ENVIRONMENT         = var.environment
     }
   }
 }

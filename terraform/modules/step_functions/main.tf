@@ -48,17 +48,17 @@ locals {
           "Payload.$"    = "$"
         }
         ResultSelector = {
-          "incident_id.$"        = "$.Payload.incident_id"
-          "created_at.$"         = "$.Payload.created_at"
-          "alarm_name.$"         = "$.Payload.alarm_name"
-          "alarm_arn.$"          = "$.Payload.alarm_arn"
-          "resource_arn.$"       = "$.Payload.resource_arn"
-          "log_group_name.$"     = "$.Payload.log_group_name"
-          "logs_snapshot.$"      = "$.Payload.logs_snapshot"
-          "diagnosis.$"          = "$.Payload.diagnosis"
+          "incident_id.$"         = "$.Payload.incident_id"
+          "created_at.$"          = "$.Payload.created_at"
+          "alarm_name.$"          = "$.Payload.alarm_name"
+          "alarm_arn.$"           = "$.Payload.alarm_arn"
+          "resource_arn.$"        = "$.Payload.resource_arn"
+          "log_group_name.$"      = "$.Payload.log_group_name"
+          "logs_snapshot.$"       = "$.Payload.logs_snapshot"
+          "diagnosis.$"           = "$.Payload.diagnosis"
           "recommended_runbook.$" = "$.Payload.recommended_runbook"
-          "confidence.$"         = "$.Payload.confidence"
-          "reasoning.$"          = "$.Payload.reasoning"
+          "confidence.$"          = "$.Payload.confidence"
+          "reasoning.$"           = "$.Payload.reasoning"
         }
         Catch = [{
           ErrorEquals = ["States.ALL"]
@@ -69,8 +69,8 @@ locals {
       }
 
       SendApprovalEmail = {
-        Type    = "Task"
-        Comment = "Send SES approval email; pause execution until human clicks Approve or Reject (up to 24 h)."
+        Type     = "Task"
+        Comment  = "Send SES approval email; pause execution until human clicks Approve or Reject (up to 24 h)."
         Resource = "arn:aws:states:::lambda:invoke.waitForTaskToken"
         Parameters = {
           "FunctionName" = var.send_approval_email_lambda_arn
