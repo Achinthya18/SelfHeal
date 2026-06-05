@@ -82,3 +82,11 @@ module "eventbridge" {
   environment        = var.environment
   step_functions_arn = module.step_functions.state_machine_arn
 }
+
+module "github_oidc" {
+  source = "./modules/github_oidc"
+
+  github_org  = "Achinthya18"
+  github_repo = "SelfHeal"
+  environment = var.environment
+}

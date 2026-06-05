@@ -1,0 +1,50 @@
+name: CD
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+# Required for OIDC: lets the runner request a JWT from GitHub that AWS can verify.
+# contents:read is needed to clone the repo.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Terraform apply (dev)
+    runs-on: ubuntu-latest
+
+    # The "dev" environment is where the manual approval gate lives. Configure
+    # it once in GitHub: Settings → Environments → New environment → "dev",
+    # then enable "Required reviewers" and add yourself. Until you approve in
+    # the Actions UI, this job will sit paused.
+    environment: dev
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+
+      - name: Terraform init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform apply
+        working-directory: terraform
+        env:
+          TF_VAR_approval_token_secret: ${{ secrets.APPROVAL_TOKEN_SECRET }}
+        run: |
+          terraform apply -auto-approve \
+            -var-file=environments/dev/terraform.tfvars

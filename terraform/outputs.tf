@@ -22,3 +22,8 @@ output "api_gateway_url" {
   value       = module.api_gateway.api_gateway_url
   description = "Base URL for approval callbacks — append /approve or /reject."
 }
+
+output "github_actions_deploy_role_arn" {
+  value       = module.github_oidc.deploy_role_arn
+  description = "Role ARN that GitHub Actions assumes via OIDC. Copy into the GitHub Environment secret AWS_DEPLOY_ROLE_ARN."
+}
