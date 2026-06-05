@@ -3,7 +3,11 @@ description: >
   Increases the desired capacity of the specified Auto Scaling Group by 1.
   Respects the group's MaxSize — will not exceed it.
   Waits up to 5 minutes for a new instance to reach InService state.
+assumeRole: "{{ AutomationAssumeRole }}"
 parameters:
+  AutomationAssumeRole:
+    type: String
+    description: IAM role ARN that SSM Automation assumes while executing this runbook.
   AutoScalingGroupName:
     type: String
     description: The name of the Auto Scaling Group to scale out.

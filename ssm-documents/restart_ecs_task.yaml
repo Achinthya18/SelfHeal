@@ -3,7 +3,11 @@ description: >
   Stops the first running task in the specified ECS service.
   The ECS scheduler automatically starts a replacement task.
   Waits up to 5 minutes for the service running count to meet desired count.
+assumeRole: "{{ AutomationAssumeRole }}"
 parameters:
+  AutomationAssumeRole:
+    type: String
+    description: IAM role ARN that SSM Automation assumes while executing this runbook.
   ClusterName:
     type: String
     description: Name of the ECS cluster.

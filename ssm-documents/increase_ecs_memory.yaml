@@ -3,7 +3,11 @@ description: >
   Registers a new revision of the ECS task definition with an increased memory limit,
   then updates the service to use the new revision and forces a new deployment.
   Waits up to 10 minutes for the service to stabilize with the updated tasks running.
+assumeRole: "{{ AutomationAssumeRole }}"
 parameters:
+  AutomationAssumeRole:
+    type: String
+    description: IAM role ARN that SSM Automation assumes while executing this runbook.
   ClusterName:
     type: String
     description: Name of the ECS cluster.

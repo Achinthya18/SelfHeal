@@ -53,21 +53,29 @@ resource "aws_cloudwatch_event_target" "step_functions" {
   # Build the Step Functions input from the CloudWatch alarm event.
   # resource_arn is set to the alarm ARN as a placeholder; DiagnosticLambda
   # already handles cases where the resource ARN has no matching log group.
+  # When the alarm has ECS dimensions (ClusterName + ServiceName) the transformer
+  # builds a proper ECS service ARN that ExecuteRunbook can parse. For alarms
+  # without those dimensions (e.g. the manual-test alarm), the cluster/service
+  # placeholders resolve to empty strings — those paths were never expected to
+  # complete a real ECS restart anyway, and the upstream pipeline still works.
   input_transformer {
     input_paths = {
-      alarm_name = "$.detail.alarmName"
-      alarm_arn  = "$.resources[0]"
-      reason     = "$.detail.state.reason"
-      region     = "$.region"
+      alarm_name  = "$.detail.alarmName"
+      alarm_arn   = "$.resources[0]"
+      reason      = "$.detail.state.reason"
+      region      = "$.region"
+      account     = "$.account"
+      ecs_cluster = "$.detail.configuration.metrics[0].metricStat.metric.dimensions.ClusterName"
+      ecs_service = "$.detail.configuration.metrics[0].metricStat.metric.dimensions.ServiceName"
     }
     input_template = <<-JSON
       {
-        "alarm_name":    "<alarm_name>",
-        "alarm_arn":     "<alarm_arn>",
-        "resource_arn":  "<alarm_arn>",
+        "alarm_name":     "<alarm_name>",
+        "alarm_arn":      "<alarm_arn>",
+        "resource_arn":   "arn:aws:ecs:<region>:<account>:service/<ecs_cluster>/<ecs_service>",
         "log_group_name": "/self-healing/demo-service",
-        "reason":        "<reason>",
-        "region":        "<region>"
+        "reason":         "<reason>",
+        "region":         "<region>"
       }
     JSON
   }

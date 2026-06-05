@@ -3,7 +3,11 @@ description: >
   Stops and then starts the specified EC2 instance.
   A stop+start (not reboot) moves the instance to a new physical host,
   clearing transient hardware issues that a reboot would not resolve.
+assumeRole: "{{ AutomationAssumeRole }}"
 parameters:
+  AutomationAssumeRole:
+    type: String
+    description: IAM role ARN that SSM Automation assumes while executing this runbook.
   InstanceId:
     type: String
     description: The EC2 instance ID to restart (e.g. i-0abc123def456789).
