@@ -32,8 +32,7 @@ provider "aws" {
 module "dynamodb" {
   source = "./modules/dynamodb"
 
-  environment = var.environment
-  table_name  = "self-healing-incidents"
+  table_name = "self-healing-incidents"
 }
 
 module "lambdas" {
@@ -52,15 +51,12 @@ module "lambdas" {
 
 module "ssm_documents" {
   source = "./modules/ssm_documents"
-
-  environment = var.environment
 }
 
 module "step_functions" {
   source = "./modules/step_functions"
 
   environment                    = var.environment
-  aws_region                     = var.aws_region
   diagnostic_lambda_arn          = module.lambdas.diagnostic_lambda_arn
   send_approval_email_lambda_arn = module.lambdas.send_approval_email_lambda_arn
   execute_runbook_lambda_arn     = module.lambdas.execute_runbook_lambda_arn
@@ -78,15 +74,11 @@ module "api_gateway" {
 
 module "cloudwatch" {
   source = "./modules/cloudwatch"
-
-  environment = var.environment
-  aws_region  = var.aws_region
 }
 
 module "eventbridge" {
   source = "./modules/eventbridge"
 
   environment        = var.environment
-  aws_region         = var.aws_region
   step_functions_arn = module.step_functions.state_machine_arn
 }

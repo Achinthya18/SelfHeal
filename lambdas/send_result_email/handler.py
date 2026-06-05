@@ -33,7 +33,7 @@ from pathlib import Path
 
 import boto3
 
-from dynamo_client import get_incident, update_incident_status
+from dynamo_client import update_incident_status
 
 logger = logging.getLogger(__name__)
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))

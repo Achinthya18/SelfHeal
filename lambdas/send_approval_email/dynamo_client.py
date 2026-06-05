@@ -6,7 +6,6 @@ import logging
 import os
 
 import boto3
-from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger(__name__)
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
@@ -39,26 +38,3 @@ def save_incident(incident: dict) -> None:
     logger.info("Saving incident %s to DynamoDB", incident.get("incident_id"))
     table.put_item(Item=incident)
     logger.info("Incident %s saved", incident.get("incident_id"))
-
-
-def get_incident(incident_id: str, created_at: str) -> dict | None:
-    """
-    Fetch a single incident record by its primary key.
-
-    Parameters
-    ----------
-    incident_id : str
-        The partition key.
-    created_at : str
-        The sort key (ISO 8601 string stored at write time).
-
-    Returns
-    -------
-    dict | None
-        The item dict, or None if not found.
-    """
-    table = _get_table()
-    response = table.get_item(
-        Key={"incident_id": incident_id, "created_at": created_at}
-    )
-    return response.get("Item")

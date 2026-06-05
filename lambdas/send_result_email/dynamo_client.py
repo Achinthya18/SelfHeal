@@ -23,15 +23,6 @@ def _get_table():
     return _table
 
 
-def get_incident(incident_id: str, created_at: str) -> dict | None:
-    """Fetch incident by primary key."""
-    table = _get_table()
-    response = table.get_item(
-        Key={"incident_id": incident_id, "created_at": created_at}
-    )
-    return response.get("Item")
-
-
 def update_incident_status(
     incident_id: str,
     created_at: str,

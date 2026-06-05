@@ -29,7 +29,6 @@ Output:
 
 import hashlib
 import hmac
-import json
 import logging
 import os
 import time
@@ -48,7 +47,6 @@ SES_RECIPIENT_EMAIL = os.environ["SES_RECIPIENT_EMAIL"]
 API_GATEWAY_BASE_URL = os.environ.get("API_GATEWAY_BASE_URL", "")
 APPROVAL_TOKEN_SECRET = os.environ["APPROVAL_TOKEN_SECRET"]
 APPROVAL_TOKEN_EXPIRY_MINUTES = int(os.environ.get("APPROVAL_TOKEN_EXPIRY_MINUTES", "15"))
-DYNAMO_TABLE_NAME = os.environ.get("DYNAMO_TABLE_NAME", "self-healing-incidents")
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 
 _ses_client = None

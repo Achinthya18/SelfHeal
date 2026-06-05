@@ -3,11 +3,6 @@ variable "environment" {
   description = "Deployment environment (dev, prod)."
 }
 
-variable "aws_region" {
-  type        = string
-  description = "AWS region."
-}
-
 variable "diagnostic_lambda_arn" {
   type        = string
   description = "ARN of DiagnosticLambda."

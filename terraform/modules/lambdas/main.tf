@@ -104,11 +104,10 @@ resource "aws_lambda_function" "approval_callback" {
 
   environment {
     variables = {
-      APPROVAL_TOKEN_SECRET         = var.approval_token_secret
-      APPROVAL_TOKEN_EXPIRY_MINUTES = tostring(var.approval_token_expiry_minutes)
-      DYNAMO_TABLE_NAME             = "self-healing-incidents"
-      LOG_LEVEL                     = "INFO"
-      ENVIRONMENT                   = var.environment
+      APPROVAL_TOKEN_SECRET = var.approval_token_secret
+      DYNAMO_TABLE_NAME     = "self-healing-incidents"
+      LOG_LEVEL             = "INFO"
+      ENVIRONMENT           = var.environment
     }
   }
 }

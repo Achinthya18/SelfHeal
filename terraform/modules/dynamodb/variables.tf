@@ -3,8 +3,3 @@ variable "table_name" {
   type        = string
   default     = "self-healing-incidents"
 }
-
-variable "environment" {
-  description = "Deployment environment"
-  type        = string
-}
