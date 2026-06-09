@@ -27,3 +27,8 @@ output "github_actions_deploy_role_arn" {
   value       = module.github_oidc.deploy_role_arn
   description = "Role ARN that GitHub Actions assumes via OIDC. Copy into the GitHub Environment secret AWS_DEPLOY_ROLE_ARN."
 }
+
+output "dashboard_url" {
+  value       = module.dashboard.dashboard_url
+  description = "Direct AWS console link to the self-healing CloudWatch dashboard."
+}

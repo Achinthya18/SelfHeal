@@ -90,3 +90,16 @@ module "github_oidc" {
   github_repo = "SelfHeal"
   environment = var.environment
 }
+
+module "dashboard" {
+  source = "./modules/dashboard"
+
+  environment           = var.environment
+  aws_region            = var.aws_region
+  state_machine_arn     = module.step_functions.state_machine_arn
+  lambda_function_names = module.lambdas.function_names
+  dynamodb_table_name   = module.dynamodb.table_name
+  api_gateway_name      = "self-healing-approval-${var.environment}"
+  api_gateway_stage     = "v1"
+  alarm_names           = module.cloudwatch.alarm_names
+}

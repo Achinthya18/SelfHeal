@@ -52,3 +52,14 @@ output "gemini_secret_arn" {
   value       = aws_secretsmanager_secret.gemini_api_key.arn
   description = "ARN of the Gemini API key secret in Secrets Manager"
 }
+
+output "function_names" {
+  value = {
+    diagnostic          = aws_lambda_function.diagnostic.function_name
+    send_approval_email = aws_lambda_function.send_approval_email.function_name
+    approval_callback   = aws_lambda_function.approval_callback.function_name
+    execute_runbook     = aws_lambda_function.execute_runbook.function_name
+    send_result_email   = aws_lambda_function.send_result_email.function_name
+  }
+  description = "Function names of all five Lambdas — consumed by the dashboard module."
+}

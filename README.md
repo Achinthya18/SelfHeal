@@ -48,6 +48,7 @@ The entire workflow lives inside one Step Functions state machine. The HITL paus
 | API Gateway | Approve/Reject callback endpoints |
 | DynamoDB | Incident records + audit trail (90-day TTL) |
 | SSM Automation | Execute remediation runbooks |
+| CloudWatch Dashboard | Single-pane view across the pipeline |
 | Secrets Manager | Gemini API key |
 | S3 + DynamoDB | Terraform remote state + locking |
 
@@ -168,6 +169,7 @@ This provisions all AWS resources. Takes ~2 minutes. Note the outputs:
 ```
 api_gateway_url    = "https://XXXX.execute-api.ap-south-1.amazonaws.com/v1"
 step_functions_arn = "arn:aws:states:ap-south-1:..."
+dashboard_url      = "https://ap-south-1.console.aws.amazon.com/cloudwatch/home?region=ap-south-1#dashboards:name=self-healing-dev"
 ```
 
 ### Step 9 — Store your Gemini API key
@@ -225,6 +227,14 @@ Check your email within ~30 seconds. Click **Approve** or **Reject** to complete
 
 ---
 
+## Observability
+
+A CloudWatch dashboard named `self-healing-dev` is provisioned alongside the rest of the stack and surfaces the whole pipeline on one screen: Step Functions execution counters, Lambda invocations / errors / p95 duration across all five functions, DynamoDB capacity on the incidents table, SES delivery outcomes, API Gateway request counts, and the live state of the three `self-healing-*` alarms.
+
+Open it via the `dashboard_url` Terraform output.
+
+---
+
 ## Testing without triggering real fixes
 
 **Option 1 — Reject the email**
@@ -266,7 +276,8 @@ aws lambda invoke \
 │   │   ├── lambdas/         # All 5 functions + IAM roles
 │   │   ├── dynamodb/        # Incidents table (90-day TTL)
 │   │   ├── api_gateway/     # /approve + /reject REST API
-│   │   └── ssm_documents/   # 5 aws_ssm_document resources
+│   │   ├── ssm_documents/   # 5 aws_ssm_document resources
+│   │   └── dashboard/       # CloudWatch dashboard
 │   └── environments/dev/    # terraform.tfvars
 └── tests/
     ├── test_diagnostic_lambda.py
